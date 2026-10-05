@@ -36,6 +36,22 @@ describe('TemplatesService', () => {
     service = module.get<TemplatesService>(TemplatesService);
   });
 
+  describe('findAll', () => {
+    it('should find all templates including inactive', async () => {
+      const mockTemplates = [
+        { id: 't1', name: 'T1', isActive: false },
+        { id: 't2', name: 'T2', isActive: true },
+      ];
+      prisma.template.findMany.mockResolvedValue(mockTemplates);
+
+      const result = await service.findAll();
+      expect(result).toEqual(mockTemplates);
+      expect(prisma.template.findMany).toHaveBeenCalledWith({
+        orderBy: { order: 'asc' },
+      });
+    });
+  });
+
   describe('findAllActive', () => {
     it('should find all active templates by eventType', async () => {
       const mockTemplates = [

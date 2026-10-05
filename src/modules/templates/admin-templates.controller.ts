@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Post,
   Put,
@@ -20,6 +21,11 @@ import { Role } from '@prisma/client';
 @Roles(Role.ADMIN)
 export class AdminTemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
+
+  @Get()
+  async findAll() {
+    return this.templatesService.findAll();
+  }
 
   @Post()
   async create(@Body() dto: CreateTemplateDto) {

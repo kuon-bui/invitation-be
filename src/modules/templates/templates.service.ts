@@ -8,6 +8,12 @@ import { EventType } from '@prisma/client';
 export class TemplatesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll() {
+    return this.prisma.template.findMany({
+      orderBy: { order: 'asc' },
+    });
+  }
+
   async findAllActive(eventType?: EventType) {
     const where: { isActive: boolean; eventType?: EventType } = { isActive: true };
     if (eventType) {
