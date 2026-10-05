@@ -11,6 +11,7 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { RsvpModule } from './modules/rsvp/rsvp.module';
 import { WishesModule } from './modules/wishes/wishes.module';
 import { MediaModule } from './modules/media/media.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MediaModule } from './modules/media/media.module';
     RsvpModule,
     WishesModule,
     MediaModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
