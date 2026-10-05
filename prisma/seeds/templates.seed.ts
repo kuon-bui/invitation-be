@@ -1,0 +1,280 @@
+import { PrismaClient, EventType } from '@prisma/client';
+
+export const templatesSeedData = [
+  {
+    id: 'truyen-thong-01',
+    name: 'Truyền thống 01',
+    eventType: EventType.WEDDING,
+    category: 'truyen-thong',
+    badge: 'Kinh điển',
+    styleDesc: 'Đỏ song hỷ · Nét Á Đông · Trang trọng',
+    thumbnailUrl: '/templates/truyen-thong-01.jpg',
+    isActive: true,
+    order: 1,
+    config: {
+      theme: {
+        fontFamily: 'font-serif',
+        ornament: 'song-hy',
+        colors: {
+          primary: '#8B1A28',
+          primaryText: '#F8E7C5',
+          bgWrapper: '#3A080E',
+          cardBg: '#8B1A28',
+          cardBorder: '#B98D4B',
+          textTitle: '#FCEFD5',
+          textBody: '#E6C99C',
+          accent: '#D4AF37',
+          tagBg: '#600E19',
+          tagText: '#FCEFD5',
+          buttonBg: '#D4AF37',
+          buttonText: '#3A080E',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'traditional-ornate' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+  {
+    id: 'duyen-dang-01',
+    name: 'Duyên dáng 01',
+    eventType: EventType.WEDDING,
+    category: 'hien-dai',
+    badge: 'Phổ biến nhất',
+    styleDesc: 'Thanh lịch · Hoa nhã nhặn · Tinh tế',
+    thumbnailUrl: '/templates/duyen-dang-01.jpg',
+    isActive: true,
+    order: 2,
+    config: {
+      theme: {
+        fontFamily: 'font-sans',
+        ornament: 'arch-monogram',
+        colors: {
+          primary: '#8B263E',
+          primaryText: '#FFFFFF',
+          bgWrapper: '#FAF7F2',
+          cardBg: '#FFFDF9',
+          cardBorder: '#E8DDD0',
+          textTitle: '#241F1C',
+          textBody: '#665E55',
+          accent: '#8B263E',
+          tagBg: '#F4EAE3',
+          tagText: '#8B263E',
+          buttonBg: '#8B263E',
+          buttonText: '#FFFFFF',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'modern-minimal' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+  {
+    id: 'duyen-dang-04',
+    name: 'Duyên dáng 04',
+    eventType: EventType.WEDDING,
+    category: 'toi-gian',
+    badge: 'Yêu thích',
+    styleDesc: 'Tối giản hiện đại · Typo nghệ thuật',
+    thumbnailUrl: '/templates/duyen-dang-04.jpg',
+    isActive: true,
+    order: 3,
+    config: {
+      theme: {
+        fontFamily: 'font-sans',
+        ornament: 'minimalist-grid',
+        colors: {
+          primary: '#1F1D1A',
+          primaryText: '#FAF8F5',
+          bgWrapper: '#EFEBE4',
+          cardBg: '#F9F6F0',
+          cardBorder: '#DDD6CB',
+          textTitle: '#1A1917',
+          textBody: '#59534C',
+          accent: '#8C7355',
+          tagBg: '#E8E2D8',
+          tagText: '#2B2824',
+          buttonBg: '#1F1D1A',
+          buttonText: '#FAF8F5',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'clean-typo' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+  {
+    id: 'hoa-dau-biec',
+    name: 'Hoa Đậu Biếc',
+    eventType: EventType.WEDDING,
+    category: 'hoa-co',
+    badge: 'Lãng mạn',
+    styleDesc: 'Tone xanh lam thanh bình · Lãng mạn',
+    thumbnailUrl: '/templates/hoa-dau-biec.jpg',
+    isActive: true,
+    order: 4,
+    config: {
+      theme: {
+        fontFamily: 'font-serif',
+        ornament: 'floral-wreath',
+        colors: {
+          primary: '#284A6E',
+          primaryText: '#FFFFFF',
+          bgWrapper: '#E6EFF7',
+          cardBg: '#F5F9FD',
+          cardBorder: '#C8D9E8',
+          textTitle: '#1E334D',
+          textBody: '#4B617A',
+          accent: '#3B6999',
+          tagBg: '#E0ECF6',
+          tagText: '#284A6E',
+          buttonBg: '#284A6E',
+          buttonText: '#FFFFFF',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'floral-romantic' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+  {
+    id: 'tap-chi-editorial',
+    name: 'Tạp chí Editorial',
+    eventType: EventType.WEDDING,
+    category: 'tap-chi',
+    badge: 'Thời thượng',
+    styleDesc: 'Phong cách bìa tạp chí · Phóng khoáng',
+    thumbnailUrl: '/templates/tap-chi-editorial.jpg',
+    isActive: true,
+    order: 5,
+    config: {
+      theme: {
+        fontFamily: 'font-serif',
+        ornament: 'magazine-cover',
+        colors: {
+          primary: '#12161A',
+          primaryText: '#FFFFFF',
+          bgWrapper: '#0A0D10',
+          cardBg: '#151A20',
+          cardBorder: '#2E3842',
+          textTitle: '#FFFFFF',
+          textBody: '#A8B4C0',
+          accent: '#E2A855',
+          tagBg: '#222B35',
+          tagText: '#E2A855',
+          buttonBg: '#FFFFFF',
+          buttonText: '#12161A',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'editorial-cover' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+  {
+    id: 'thien-nhien-01',
+    name: 'Thiên nhiên 01',
+    eventType: EventType.WEDDING,
+    category: 'hoa-co',
+    badge: 'Rustic',
+    styleDesc: 'Lá ô liu · Mộc mạc gần gũi thiên nhiên',
+    thumbnailUrl: '/templates/thien-nhien-01.jpg',
+    isActive: true,
+    order: 6,
+    config: {
+      theme: {
+        fontFamily: 'font-sans',
+        ornament: 'olive-laurel',
+        colors: {
+          primary: '#2D4733',
+          primaryText: '#FFFFFF',
+          bgWrapper: '#EDF2EC',
+          cardBg: '#F7FAF6',
+          cardBorder: '#CCD9CB',
+          textTitle: '#1C3322',
+          textBody: '#4D6352',
+          accent: '#4A6E52',
+          tagBg: '#E3ECE2',
+          tagText: '#2D4733',
+          buttonBg: '#2D4733',
+          buttonText: '#FFFFFF',
+        },
+      },
+      sections: {
+        hero: { enabled: true, layout: 'botanical-rustic' },
+        countdown: { enabled: true },
+        invitationLetter: { enabled: true },
+        eventTimeline: { enabled: true },
+        locations: { enabled: true, multiSide: true },
+        gallery: { enabled: true, maxPhotos: 12 },
+        rsvp: { enabled: true, allowDietChoice: true },
+        luckyMoney: { enabled: true, showQr: true },
+        guestbook: { enabled: true, allowDirectPost: true },
+      },
+    },
+  },
+];
+
+export async function seedTemplates(prisma: PrismaClient) {
+  for (const template of templatesSeedData) {
+    await prisma.template.upsert({
+      where: { id: template.id },
+      update: template,
+      create: template,
+    });
+  }
+}
+
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedTemplates(prisma)
+    .then(async () => {
+      console.log('Templates seeded successfully.');
+      await prisma.$disconnect();
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}
