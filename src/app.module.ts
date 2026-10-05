@@ -10,6 +10,7 @@ import { InvitationsModule } from './modules/invitations/invitations.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { RsvpModule } from './modules/rsvp/rsvp.module';
 import { WishesModule } from './modules/wishes/wishes.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WishesModule } from './modules/wishes/wishes.module';
     GuestsModule,
     RsvpModule,
     WishesModule,
+    MediaModule,
   ],
 })
 export class AppModule {}
