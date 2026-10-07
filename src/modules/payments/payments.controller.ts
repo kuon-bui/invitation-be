@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreatePublicInvoiceDto } from './dto/create-public-invoice.dto';
 import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -26,6 +27,11 @@ export class PaymentsController {
     @Body() dto: CreateInvoiceDto,
   ) {
     return this.paymentsService.createInvoice(userId, dto);
+  }
+
+  @Post('public-invoice')
+  async createPublicInvoice(@Body() dto: CreatePublicInvoiceDto) {
+    return this.paymentsService.createPublicInvoice(dto);
   }
 
   @Post('webhook/sepay')
