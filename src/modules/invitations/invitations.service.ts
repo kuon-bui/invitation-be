@@ -89,6 +89,28 @@ export class InvitationsService {
     return invitation;
   }
 
+  async getOrCreateTrialUser(): Promise<string> {
+    const trialEmail = 'guest-trial@motdoi.vn';
+    const existing = await this.prisma.user.findUnique({
+      where: { email: trialEmail },
+    });
+    if (existing) {
+      return existing.id;
+    }
+    const created = await this.prisma.user.create({
+      data: {
+        email: trialEmail,
+        fullName: 'Khách dùng thử',
+      },
+    });
+    return created.id;
+  }
+
+  async createTrial(dto: CreateInvitationDto) {
+    const userId = await this.getOrCreateTrialUser();
+    return this.create(userId, dto);
+  }
+
   async create(userId: string, dto: CreateInvitationDto) {
     const slug = await this.generateUniqueSlug(dto.slug || dto.title);
     const trialEndsAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);

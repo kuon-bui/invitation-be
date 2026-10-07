@@ -15,6 +15,7 @@ describe('InvitationsController and MyInvitationsController', () => {
       findAllByUser: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
+      createTrial: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
     };
@@ -45,6 +46,25 @@ describe('InvitationsController and MyInvitationsController', () => {
       const result = await publicController.findBySlug('quan-dung');
       expect(result).toBe(mockResult);
       expect(service.findBySlug).toHaveBeenCalledWith('quan-dung');
+    });
+
+    it('createTrial and createPublic should call service.createTrial with dto', async () => {
+      const dto = {
+        templateId: 'tpl-1',
+        title: 'Title',
+        eventDate: new Date('2026-11-20'),
+        venueName: 'Venue',
+        venueAddress: 'Address',
+      };
+      const created = { id: 'inv-trial-1', ...dto };
+      service.createTrial!.mockResolvedValue(created);
+
+      const res1 = await publicController.createTrial(dto as any);
+      expect(res1).toBe(created);
+      expect(service.createTrial).toHaveBeenCalledWith(dto);
+
+      const res2 = await publicController.createPublic(dto as any);
+      expect(res2).toBe(created);
     });
   });
 
