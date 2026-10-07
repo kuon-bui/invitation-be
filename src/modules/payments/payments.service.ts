@@ -10,6 +10,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvitationStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreatePublicInvoiceDto } from './dto/create-public-invoice.dto';
 import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 
 @Injectable()
@@ -48,6 +49,7 @@ export class PaymentsService {
 
     const acc = process.env.SEPAY_ACC || '';
     const bank = process.env.SEPAY_BANK || '';
+    const name = process.env.SEPAY_NAME || '';
     const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${payment.amount}&des=${transactionCode}`;
 
     return {
@@ -56,6 +58,55 @@ export class PaymentsService {
       amount: payment.amount,
       status: payment.status,
       qrUrl,
+      accountNumber: acc,
+      bankName: bank,
+      accountName: name,
+    };
+  }
+
+  async createPublicInvoice(dto: CreatePublicInvoiceDto) {
+    let invitation: any = null;
+    if (dto.invitationId) {
+      invitation = await this.prisma.invitation.findUnique({
+        where: { id: dto.invitationId },
+      });
+    } else if (dto.slug) {
+      invitation = await this.prisma.invitation.findUnique({
+        where: { slug: dto.slug },
+      });
+    }
+
+    const transactionCode = this.generateTransactionCode();
+    const amount = dto.amount || 199000;
+
+    let invoiceId = '';
+    if (invitation) {
+      const payment = await this.prisma.payment.create({
+        data: {
+          userId: invitation.userId,
+          invitationId: invitation.id,
+          amount,
+          transactionCode,
+          status: PaymentStatus.PENDING,
+        },
+      });
+      invoiceId = payment.id;
+    }
+
+    const acc = process.env.SEPAY_ACC || '';
+    const bank = process.env.SEPAY_BANK || '';
+    const name = process.env.SEPAY_NAME || '';
+    const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${amount}&des=${transactionCode}`;
+
+    return {
+      invoiceId,
+      transactionCode,
+      amount,
+      status: PaymentStatus.PENDING,
+      qrUrl,
+      accountNumber: acc,
+      bankName: bank,
+      accountName: name,
     };
   }
 
@@ -163,6 +214,7 @@ export class PaymentsService {
       transactionCode: payment.transactionCode,
       amount: payment.amount,
       status: payment.status,
+      isPaid: payment.status === PaymentStatus.SUCCESS,
       paidAt: payment.paidAt,
       invitationId: payment.invitationId,
     };
