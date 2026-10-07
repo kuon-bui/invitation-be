@@ -24,6 +24,10 @@ describe('InvitationsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       } as any,
+      user: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+      } as any,
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -151,6 +155,33 @@ describe('InvitationsService', () => {
 
       const result = await service.create('user-1', dto as any);
       expect(result.slug).toMatch(/^cuoi-[a-z0-9]+$/);
+    });
+
+    it('should create trial invitation with default trial user', async () => {
+      (prisma.user!.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.user!.create as jest.Mock).mockResolvedValue({ id: 'trial-user-1', email: 'guest-trial@motdoi.vn' });
+      (prisma.invitation!.findUnique as jest.Mock).mockResolvedValue(null);
+
+      const createdInv = { id: 'inv-trial', userId: 'trial-user-1', status: InvitationStatus.TRIAL };
+      (prisma.invitation!.create as jest.Mock).mockResolvedValue(createdInv);
+
+      const dto = {
+        templateId: 'tpl-1',
+        title: 'Trial Wedding',
+        eventDate: new Date('2026-11-20'),
+        venueName: 'Venue',
+        venueAddress: 'Address',
+      };
+
+      const result = await service.createTrial(dto as any);
+      expect(result).toEqual(createdInv);
+      expect(prisma.user!.create).toHaveBeenCalledWith({
+        data: {
+          email: 'guest-trial@motdoi.vn',
+          fullName: 'Khách dùng thử',
+        },
+      });
+      expect(prisma.invitation!.create).toHaveBeenCalled();
     });
   });
 
