@@ -23,6 +23,8 @@ export class MediaService {
     this.s3Client = new S3Client({
       region: process.env.S3_REGION || 'auto',
       endpoint: process.env.S3_ENDPOINT || undefined,
+      // MinIO and most self-hosted S3 need path-style (endpoint/bucket/key); R2/AWS work with virtual-hosted
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
       credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY_ID || 'dummy-access-key',
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'dummy-secret-key',

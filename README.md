@@ -54,10 +54,11 @@ Các biến môi trường chính:
 | `JWT_SECRET` | Secret key ký JWT token | `super-secret-jwt-key` |
 | `JWT_EXPIRES_IN` | Thời gian sống JWT | `7d` |
 | `S3_ENDPOINT` | Endpoint S3 hoặc Cloudflare R2 | `https://<account-id>.r2.cloudflarestorage.com` |
+| `S3_FORCE_PATH_STYLE` | `true` cho MinIO / S3 tự host (URL dạng `endpoint/bucket/key`) | `false` |
 | `S3_ACCESS_KEY_ID` | Access Key S3 / R2 | `your-access-key` |
 | `S3_SECRET_ACCESS_KEY` | Secret Key S3 / R2 | `your-secret-key` |
 | `S3_BUCKET_NAME` | Tên S3 bucket | `invitation-assets` |
-| `S3_PUBLIC_DOMAIN` | Tên miền CDN công khai ảnh | `https://assets.invitation.com` |
+| `S3_PUBLIC_DOMAIN` | Tên miền CDN công khai ảnh (MinIO path-style: kèm tên bucket) | `https://assets.invitation.com` |
 | `SEPAY_ACC` | Số tài khoản nhận tiền VietQR | `0123456789` |
 | `SEPAY_BANK` | Mã ngân hàng VietQR | `MBBank` |
 | `SEPAY_WEBHOOK_API_KEY` | API Key xác thực Webhook SePay | `your-sepay-secure-webhook-api-key` |

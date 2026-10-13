@@ -45,6 +45,38 @@ describe('MediaService', () => {
     expect(result.key).toMatch(/^uploads\/\d+-[a-f0-9-]+\.mp3$/);
   });
 
+  describe('S3-compatible endpoint (MinIO)', () => {
+    beforeEach(() => {
+      process.env.S3_ENDPOINT = 'https://minio.example.com:9000';
+    });
+
+    afterEach(() => {
+      delete process.env.S3_ENDPOINT;
+      delete process.env.S3_FORCE_PATH_STYLE;
+    });
+
+    it('should sign path-style upload url when S3_FORCE_PATH_STYLE=true', async () => {
+      process.env.S3_FORCE_PATH_STYLE = 'true';
+      const result = await new MediaService().generatePresignedUrl({
+        filename: 'photo.png',
+        fileType: 'image/png',
+        folder: 'gallery',
+      });
+
+      expect(result.uploadUrl.startsWith('https://minio.example.com:9000/test-bucket/gallery/')).toBe(true);
+    });
+
+    it('should keep virtual-hosted upload url by default', async () => {
+      const result = await new MediaService().generatePresignedUrl({
+        filename: 'photo.png',
+        fileType: 'image/png',
+        folder: 'gallery',
+      });
+
+      expect(result.uploadUrl.startsWith('https://test-bucket.minio.example.com:9000/gallery/')).toBe(true);
+    });
+  });
+
   it('should throw BadRequestException on forbidden file types', async () => {
     await expect(
       service.generatePresignedUrl({
