@@ -21,7 +21,7 @@ Hệ thống backend độc lập xây dựng bằng NestJS phục vụ cho nề
 
 ## 2. Yêu cầu hệ thống (Prerequisites)
 
-- Node.js >= 20.x
+- Node.js >= 22.x (pnpm 11 yêu cầu `node:sqlite`)
 - pnpm >= 9.x
 - Docker & Docker Compose (cho môi trường container hóa)
 - PostgreSQL 16+ (nếu chạy local không qua Docker)
@@ -138,7 +138,7 @@ pnpm run test:e2e
 
 ### 5.1 Cấu trúc Dockerfile (Multi-stage)
 
-- **Stage 1 (base)**: `node:20-alpine`, kích hoạt pnpm bằng corepack, cài đặt `openssl` và `libc6-compat`.
+- **Stage 1 (base)**: `node:22-alpine`, kích hoạt pnpm `11.18.0` (khớp `packageManager` trong `package.json`) bằng corepack, cài đặt `openssl` và `libc6-compat`.
 - **Stage 2 (deps)**: Cài đặt dependencies với `pnpm install --frozen-lockfile` và sinh Prisma client.
 - **Stage 3 (builder)**: Compile TypeScript sang JavaScript với `pnpm build`, tỉa bỏ devDependencies qua `pnpm prune --prod`.
 - **Stage 4 (runner)**: Image chạy Alpine tối giản, chạy dưới tài khoản non-root `nestjs:nestjs` (UID 1001), mở cổng `3001`.

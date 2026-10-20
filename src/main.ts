@@ -1,9 +1,11 @@
+import { existsSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 // ponytail: native Node env loader; switch @nestjs/config if need multi-env or schema validation
-process.loadEnvFile?.();
+// Containers inject env vars directly and ship without .env
+if (existsSync('.env')) process.loadEnvFile();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
