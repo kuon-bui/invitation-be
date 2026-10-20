@@ -17,7 +17,8 @@ jobs:
     permissions:
       contents: read
     env:
-      IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/invitation-backend
+      # Fallback keeps PR builds working before Docker Hub is configured; pushes still need the var + secret
+      IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}/invitation-backend
     steps:
       - uses: actions/checkout@v4
 
