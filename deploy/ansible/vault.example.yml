@@ -1,0 +1,29 @@
+# Template for group_vars/all/vault.yml. Never commit the filled-in file unencrypted: the repo is public.
+# Create the real file with `ansible-vault create group_vars/all/vault.yml` (see README, section 5.4)
+# and paste these keys with production values.
+
+vault_postgres_password: CHANGE_ME # openssl rand -hex 32
+vault_jwt_secret: CHANGE_ME # openssl rand -hex 48
+
+vault_s3_access_key_id: CHANGE_ME
+vault_s3_secret_access_key: CHANGE_ME
+
+vault_sepay_acc: CHANGE_ME
+vault_sepay_bank: CHANGE_ME
+vault_sepay_name: CHANGE_ME
+vault_sepay_webhook_api_key: CHANGE_ME
+
+vault_telegram_bot_token: CHANGE_ME
+
+# Cloudflare → SSL/TLS → Origin Server → Create Certificate (PEM)
+vault_cloudflare_origin_cert: |
+  -----BEGIN CERTIFICATE-----
+  CHANGE_ME
+  -----END CERTIFICATE-----
+vault_cloudflare_origin_key: |
+  -----BEGIN PRIVATE KEY-----
+  CHANGE_ME
+  -----END PRIVATE KEY-----
+
+# Only needed if the Docker Hub repository is private (read-only access token)
+vault_dockerhub_pull_token: ""

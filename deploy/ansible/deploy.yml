@@ -1,0 +1,154 @@
+- name: Deploy invitation-backend
+  hosts: production
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.command:
+      chdir: "{{ app_dir }}"
+  vars:
+    seed_templates: false
+    required_settings:
+      - ansible_host
+      - app_domain
+      - s3_endpoint
+      - s3_public_domain
+      - vault_postgres_password
+      - vault_jwt_secret
+      - vault_s3_access_key_id
+      - vault_s3_secret_access_key
+      - vault_sepay_acc
+      - vault_sepay_bank
+      - vault_sepay_name
+      - vault_sepay_webhook_api_key
+      - vault_telegram_bot_token
+      - vault_cloudflare_origin_cert
+      - vault_cloudflare_origin_key
+
+  tasks:
+    - name: Check app_version
+      ansible.builtin.assert:
+        that: app_version is defined and app_version is match('^[0-9]+\.[0-9]+\.[0-9]+$')
+        fail_msg: "Pass the release to deploy: -e app_version=X.Y.Z"
+        quiet: true
+
+    - name: Check settings are filled in
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', item, default='') | length > 0
+          - "'CHANGE_ME' not in lookup('ansible.builtin.vars', item, default='')"
+        fail_msg: "{{ item }} is missing or still CHANGE_ME (inventory.yml, group_vars/all/main.yml or vault.yml)"
+        quiet: true
+      # Items are variable names, never values, so this is safe to log
+      loop: "{{ required_settings }}"
+
+    - name: Wait for SSH over Tailscale
+      ansible.builtin.wait_for_connection:
+        timeout: 180
+
+    - name: Create app directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ app_dir }}", mode: "0750" }
+        - { path: "{{ app_dir }}/caddy", mode: "0755" }
+        - { path: "{{ app_dir }}/certs", mode: "0700" }
+
+    - name: Write env files
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ app_dir }}/{{ item }}"
+        mode: "0600"
+      loop: [backend.env, postgres.env]
+      no_log: true
+
+    - name: Write Cloudflare origin certificate
+      ansible.builtin.copy:
+        content: "{{ item.content }}"
+        dest: "{{ app_dir }}/certs/{{ item.name }}"
+        mode: "0600"
+      loop:
+        - { name: origin.pem, content: "{{ vault_cloudflare_origin_cert }}" }
+        - { name: origin.key, content: "{{ vault_cloudflare_origin_key }}" }
+      no_log: true
+      notify: Restart caddy
+
+    - name: Write Caddyfile
+      ansible.builtin.template:
+        src: Caddyfile.j2
+        dest: "{{ app_dir }}/caddy/Caddyfile"
+        mode: "0644"
+      notify: Restart caddy
+
+    - name: Write compose.yml
+      ansible.builtin.template:
+        src: compose.yml.j2
+        dest: "{{ app_dir }}/compose.yml"
+        mode: "0644"
+
+    - name: Log in to Docker Hub
+      ansible.builtin.command:
+        argv: [docker, login, --username, "{{ dockerhub_username }}", --password-stdin]
+        stdin: "{{ vault_dockerhub_pull_token }}"
+      when: vault_dockerhub_pull_token | default('') | length > 0
+      changed_when: false
+      no_log: true
+
+    - name: Start postgres and caddy
+      ansible.builtin.command:
+        argv: [docker, compose, up, --detach, --wait, postgres, caddy]
+      register: infra_up
+      changed_when: infra_up.stderr is search('Created|Recreated|Started')
+
+    - name: Pull backend {{ app_version }}
+      ansible.builtin.command:
+        argv: [docker, compose, pull, backend]
+      changed_when: false
+
+    - name: Apply database migrations
+      ansible.builtin.command:
+        argv: [docker, compose, run, --rm, backend, ./node_modules/.bin/prisma, migrate, deploy]
+      register: migrate
+      changed_when: "'No pending migrations' not in migrate.stdout"
+
+    - name: Count templates
+      ansible.builtin.command:
+        argv: [docker, compose, exec, -T, postgres, psql, -U, "{{ postgres_user }}", -d, "{{ postgres_db }}", -tAc, SELECT COUNT(*) FROM templates]
+      register: template_count
+      changed_when: false
+
+    # Seed upserts by id, so a forced re-seed overwrites admin edits to the seeded templates
+    - name: Seed templates
+      ansible.builtin.command:
+        argv: [docker, compose, run, --rm, backend, node, dist/prisma/seeds/templates.seed.js]
+      when: template_count.stdout | trim == '0' or seed_templates | bool
+      changed_when: true
+
+    - name: Start backend {{ app_version }}
+      block:
+        - name: Start backend and wait until healthy
+          ansible.builtin.command:
+            argv: [docker, compose, up, --detach, --wait, --wait-timeout, "180", backend]
+          register: backend_up
+          changed_when: backend_up.stderr is search('Created|Recreated|Started')
+      rescue:
+        - name: Show backend logs
+          ansible.builtin.command:
+            argv: [docker, compose, logs, --tail, "100", backend]
+          changed_when: false
+
+        - name: Fail deploy
+          ansible.builtin.fail:
+            msg: "Backend {{ app_version }} did not become healthy, see logs above"
+
+    - name: Remove unused images
+      ansible.builtin.command:
+        argv: [docker, image, prune, --force]
+      register: prune
+      changed_when: "'Total reclaimed space: 0B' not in prune.stdout"
+
+  handlers:
+    - name: Restart caddy
+      ansible.builtin.command:
+        argv: [docker, compose, restart, caddy]
+      changed_when: true

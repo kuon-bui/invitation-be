@@ -1,0 +1,38 @@
+app_dir: /opt/invitation-backend
+# Public backend domain, proxied by Cloudflare (SSL mode Full (strict) with an Origin CA certificate)
+app_domain: CHANGE_ME.example.com
+
+dockerhub_username: cuongbui1203
+app_image: "{{ dockerhub_username }}/invitation-backend"
+
+postgres_user: invitation
+postgres_db: invitation_db
+
+# Non-secret S3 / Cloudflare R2 settings; keys live in vault.yml
+s3_region: auto
+s3_endpoint: https://CHANGE_ME.r2.cloudflarestorage.com
+s3_force_path_style: "false"
+s3_bucket_name: invitation-assets
+s3_public_domain: https://CHANGE_ME
+
+backend_env:
+  NODE_ENV: production
+  PORT: "3001"
+  # Jinja's urlencode keeps '/', which would break the URL's userinfo
+  DATABASE_URL: "postgresql://{{ postgres_user }}:{{ vault_postgres_password | urlencode | replace('/', '%2F') }}@postgres:5432/{{ postgres_db }}?schema=public"
+  JWT_SECRET: "{{ vault_jwt_secret }}"
+  JWT_EXPIRES_IN: 7d
+  S3_REGION: "{{ s3_region }}"
+  S3_ENDPOINT: "{{ s3_endpoint }}"
+  S3_FORCE_PATH_STYLE: "{{ s3_force_path_style }}"
+  S3_ACCESS_KEY_ID: "{{ vault_s3_access_key_id }}"
+  S3_SECRET_ACCESS_KEY: "{{ vault_s3_secret_access_key }}"
+  S3_BUCKET_NAME: "{{ s3_bucket_name }}"
+  S3_PUBLIC_DOMAIN: "{{ s3_public_domain }}"
+  SEPAY_ACC: "{{ vault_sepay_acc }}"
+  SEPAY_BANK: "{{ vault_sepay_bank }}"
+  SEPAY_NAME: "{{ vault_sepay_name }}"
+  SEPAY_WEBHOOK_API_KEY: "{{ vault_sepay_webhook_api_key }}"
+  TELEGRAM_BOT_TOKEN: "{{ vault_telegram_bot_token }}"
+  # Stop the Prisma CLI from phoning home during migrate/seed runs
+  CHECKPOINT_DISABLE: "1"

@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+{{ app_domain }} {
+	# Cloudflare Origin CA certificate; Cloudflare SSL mode must be Full (strict)
+	tls /certs/origin.pem /certs/origin.key
+	encode zstd gzip
+	reverse_proxy backend:3001
+}
