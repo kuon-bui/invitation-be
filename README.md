@@ -172,19 +172,19 @@ Phiên bản được quản lý bằng [release-please](https://github.com/goog
 
 1. Mỗi lần push lên `main`, workflow `Release` mở hoặc cập nhật một **Release PR**. PR này tăng `version` trong `package.json` và cập nhật `CHANGELOG.md`.
 2. Merge Release PR, workflow sẽ tạo tag `vX.Y.Z` cùng GitHub Release.
-3. Job `docker` push image `<DOCKERHUB_USERNAME>/invitation-backend`:
+3. Job `docker` **chỉ push image khi release-please vừa tạo release**. Image có tên `<DOCKERHUB_USERNAME>/invitation-backend`:
 
-| Sự kiện | Tag image |
+| Sự kiện | Docker |
 |---|---|
-| Push lên `main` | `latest`, `sha-xxxxxxx` |
-| Merge Release PR | thêm `X.Y.Z`, `X.Y` |
-| PR vào `main` | chỉ build, không push |
+| Merge Release PR (tạo release `vX.Y.Z`) | push `X.Y.Z`, `X.Y`, `latest` |
+| Push lên `main` thông thường | không build |
+| PR vào `main` | chỉ build để kiểm tra Dockerfile, không push |
 
 Đang ở giai đoạn `0.x`: `feat` tăng minor, `fix` tăng patch, breaking change cũng chỉ tăng minor. Muốn lên `1.0.0` thì thêm footer `Release-As: 1.0.0` vào commit.
 
 Yêu cầu cấu hình repo (Settings):
 - **Actions → General**: bật *Allow GitHub Actions to create and approve pull requests*.
-- **Secrets and variables → Actions**: variable `DOCKERHUB_USERNAME`, secret `DOCKERHUB_TOKEN` (Docker Hub access token, quyền Read & Write).
+- **Secrets and variables → Actions**: secret `DOCKERHUB_USERNAME` và secret `DOCKERHUB_TOKEN` (Docker Hub access token, quyền Read & Write).
 
 ---
 
