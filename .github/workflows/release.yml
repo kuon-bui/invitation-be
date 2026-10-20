@@ -1,18 +1,36 @@
-name: Docker Publish
+name: Release
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
 
 concurrency:
-  group: docker-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ github.ref }}
+  # Never cancel main runs: a cancelled run could leave a release tag without its image
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build-and-push:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+
+  # Tags pushed by release-please with GITHUB_TOKEN don't trigger workflows, so the image is built here
+  docker:
+    needs: release-please
+    # Run even when release-please is skipped (PRs) or fails; version tags only apply when a release was created
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,8 +57,8 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.version }},enable=${{ needs.release-please.outputs.release_created == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }},enable=${{ needs.release-please.outputs.release_created == 'true' }}
             type=ref,event=pr
 
       - name: Build and push

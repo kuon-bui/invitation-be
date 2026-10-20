@@ -166,6 +166,26 @@ Dừng dịch vụ:
 docker compose down
 ```
 
+### 5.3 Phát hành phiên bản (release-please) & Docker Hub
+
+Phiên bản được quản lý bằng [release-please](https://github.com/googleapis/release-please-action) dựa trên [Conventional Commits](https://www.conventionalcommits.org/). Repo dùng squash merge, nên **tiêu đề PR** phải đúng định dạng (`feat: ...`, `fix: ...`, `feat!: ...`).
+
+1. Mỗi lần push lên `main`, workflow `Release` mở hoặc cập nhật một **Release PR**. PR này tăng `version` trong `package.json` và cập nhật `CHANGELOG.md`.
+2. Merge Release PR, workflow sẽ tạo tag `vX.Y.Z` cùng GitHub Release.
+3. Job `docker` push image `<DOCKERHUB_USERNAME>/invitation-backend`:
+
+| Sự kiện | Tag image |
+|---|---|
+| Push lên `main` | `latest`, `sha-xxxxxxx` |
+| Merge Release PR | thêm `X.Y.Z`, `X.Y` |
+| PR vào `main` | chỉ build, không push |
+
+Đang ở giai đoạn `0.x`: `feat` tăng minor, `fix` tăng patch, breaking change cũng chỉ tăng minor. Muốn lên `1.0.0` thì thêm footer `Release-As: 1.0.0` vào commit.
+
+Yêu cầu cấu hình repo (Settings):
+- **Actions → General**: bật *Allow GitHub Actions to create and approve pull requests*.
+- **Secrets and variables → Actions**: variable `DOCKERHUB_USERNAME`, secret `DOCKERHUB_TOKEN` (Docker Hub access token, quyền Read & Write).
+
 ---
 
 ## 6. Danh mục API chính (API Endpoints Overview)
