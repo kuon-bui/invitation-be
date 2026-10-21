@@ -8,6 +8,7 @@
     seed_templates: false
     required_settings:
       - ansible_host
+      - dockerhub_username
       - s3_endpoint
       - s3_public_domain
       - vault_postgres_password
@@ -32,7 +33,7 @@
         that:
           - lookup('ansible.builtin.vars', item, default='') | length > 0
           - "'CHANGE_ME' not in lookup('ansible.builtin.vars', item, default='')"
-        fail_msg: "{{ item }} is missing or still CHANGE_ME (inventory.yml, group_vars/all/main.yml or vault.yml)"
+        fail_msg: "{{ item }} is missing or still CHANGE_ME (inventory.yml, group_vars/all/main.yml, vault.yml or the DOCKERHUB_USERNAME env var)"
         quiet: true
       # Items are variable names, never values, so this is safe to log
       loop: "{{ required_settings }}"

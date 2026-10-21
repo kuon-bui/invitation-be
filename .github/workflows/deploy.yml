@@ -52,6 +52,7 @@ jobs:
       - name: Deploy ${{ inputs.version }}
         env:
           VERSION: ${{ inputs.version }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           ANSIBLE_PRIVATE_KEY_FILE: ${{ runner.temp }}/deploy_key
           ANSIBLE_FORCE_COLOR: "1"

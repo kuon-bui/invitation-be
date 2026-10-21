@@ -248,12 +248,13 @@ Mỗi lần deploy, playbook làm lần lượt:
    | `VPS_SSH_PRIVATE_KEY` | nội dung file `deploy_key` |
    | `VPS_SSH_KNOWN_HOSTS` | kết quả của `ssh-keyscan <tên MagicDNS>`, chạy từ một máy trong tailnet. Tên máy phải trùng với `ansible_host` |
    | `ANSIBLE_VAULT_PASSWORD` | mật khẩu vault |
+   | `DOCKERHUB_USERNAME` | secret job `docker` đang dùng (mục 5.3). Workflow Deploy đưa nó vào Ansible qua biến môi trường cùng tên để ghép tên image |
 
 #### Vận hành
 
 - **Deploy lại hoặc rollback**: vào Actions → **Deploy** → Run workflow, rồi nhập version (ví dụ `0.1.0`). Version đó phải đã có trên Docker Hub.
 - **Xem log**: `ssh deploy@<tên MagicDNS>`, rồi chạy `cd /opt/invitation-backend && docker compose logs -f backend`.
-- **Seed lại mẫu thiệp** (⚠️ ghi đè 6 mẫu gốc nếu admin đã sửa): chạy trên VPS `docker compose run --rm backend node dist/prisma/seeds/templates.seed.js`. Nếu chạy Ansible từ máy trong tailnet thì thêm `-e seed_templates=true`.
+- **Seed lại mẫu thiệp** (⚠️ ghi đè 6 mẫu gốc nếu admin đã sửa): chạy trên VPS `docker compose run --rm backend node dist/prisma/seeds/templates.seed.js`. Nếu chạy Ansible từ máy trong tailnet thì thêm `-e seed_templates=true`. Chạy Ansible ngoài GitHub Actions thì phải `export DOCKERHUB_USERNAME=<user Docker Hub>` trước.
 
 ---
 

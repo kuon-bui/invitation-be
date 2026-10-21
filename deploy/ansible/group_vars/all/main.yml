@@ -4,18 +4,19 @@ app_dir: /opt/invitation-backend
 backend_bind_address: 0.0.0.0
 backend_port: 3001
 
-dockerhub_username: cuongbui1203
+# Same DOCKERHUB_USERNAME secret the docker job pushes with; deploy.yml exports it to Ansible
+dockerhub_username: "{{ lookup('ansible.builtin.env', 'DOCKERHUB_USERNAME') }}"
 app_image: "{{ dockerhub_username }}/invitation-backend"
 
 postgres_user: invitation
 postgres_db: invitation_db
 
 # Non-secret S3 / Cloudflare R2 settings; keys live in vault.yml
-s3_region: auto
-s3_endpoint: https://CHANGE_ME.r2.cloudflarestorage.com
-s3_force_path_style: "false"
-s3_bucket_name: invitation-assets
-s3_public_domain: https://CHANGE_ME
+s3_region: vn-1
+s3_endpoint: https://minio1.webtui.vn:9000
+s3_force_path_style: true
+s3_bucket_name: bucket-vpstttuser1
+s3_public_domain: https://minio1.webtui.vn:9000/bucket-vpstttuser1
 
 backend_env:
   NODE_ENV: production
