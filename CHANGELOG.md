@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.1.1...invitation-backend-v0.1.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **compose:** update postgres volume path and remove unused volume declaration ([#11](https://github.com/kuon-bui/invitation-be/issues/11)) ([f29b37a](https://github.com/kuon-bui/invitation-be/commit/f29b37a9ff3a7db5e19de89b4c68ccc91fca2c92))
+
 ## [0.1.1](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.1.0...invitation-backend-v0.1.1) (2026-10-21)
 
 
