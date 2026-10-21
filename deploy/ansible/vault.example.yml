@@ -15,15 +15,5 @@ vault_sepay_webhook_api_key: CHANGE_ME
 
 vault_telegram_bot_token: CHANGE_ME
 
-# Cloudflare → SSL/TLS → Origin Server → Create Certificate (PEM)
-vault_cloudflare_origin_cert: |
-  -----BEGIN CERTIFICATE-----
-  CHANGE_ME
-  -----END CERTIFICATE-----
-vault_cloudflare_origin_key: |
-  -----BEGIN PRIVATE KEY-----
-  CHANGE_ME
-  -----END PRIVATE KEY-----
-
 # Only needed if the Docker Hub repository is private (read-only access token)
 vault_dockerhub_pull_token: ""

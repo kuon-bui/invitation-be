@@ -1,6 +1,8 @@
 app_dir: /opt/invitation-backend
-# Public backend domain, proxied by Cloudflare (SSL mode Full (strict) with an Origin CA certificate)
-app_domain: CHANGE_ME.example.com
+# Host port the Cloudflare Tunnel service connects to. 0.0.0.0 also exposes it on the public IP
+# (Docker bypasses ufw), so block it in the provider firewall or narrow the address
+backend_bind_address: 0.0.0.0
+backend_port: 3001
 
 dockerhub_username: cuongbui1203
 app_image: "{{ dockerhub_username }}/invitation-backend"

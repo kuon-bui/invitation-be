@@ -8,7 +8,6 @@
     seed_templates: false
     required_settings:
       - ansible_host
-      - app_domain
       - s3_endpoint
       - s3_public_domain
       - vault_postgres_password
@@ -20,8 +19,6 @@
       - vault_sepay_name
       - vault_sepay_webhook_api_key
       - vault_telegram_bot_token
-      - vault_cloudflare_origin_cert
-      - vault_cloudflare_origin_key
 
   tasks:
     - name: Check app_version
@@ -44,15 +41,11 @@
       ansible.builtin.wait_for_connection:
         timeout: 180
 
-    - name: Create app directories
+    - name: Create app directory
       ansible.builtin.file:
-        path: "{{ item.path }}"
+        path: "{{ app_dir }}"
         state: directory
-        mode: "{{ item.mode }}"
-      loop:
-        - { path: "{{ app_dir }}", mode: "0750" }
-        - { path: "{{ app_dir }}/caddy", mode: "0755" }
-        - { path: "{{ app_dir }}/certs", mode: "0700" }
+        mode: "0750"
 
     - name: Write env files
       ansible.builtin.template:
@@ -61,24 +54,6 @@
         mode: "0600"
       loop: [backend.env, postgres.env]
       no_log: true
-
-    - name: Write Cloudflare origin certificate
-      ansible.builtin.copy:
-        content: "{{ item.content }}"
-        dest: "{{ app_dir }}/certs/{{ item.name }}"
-        mode: "0600"
-      loop:
-        - { name: origin.pem, content: "{{ vault_cloudflare_origin_cert }}" }
-        - { name: origin.key, content: "{{ vault_cloudflare_origin_key }}" }
-      no_log: true
-      notify: Restart caddy
-
-    - name: Write Caddyfile
-      ansible.builtin.template:
-        src: Caddyfile.j2
-        dest: "{{ app_dir }}/caddy/Caddyfile"
-        mode: "0644"
-      notify: Restart caddy
 
     - name: Write compose.yml
       ansible.builtin.template:
@@ -94,11 +69,11 @@
       changed_when: false
       no_log: true
 
-    - name: Start postgres and caddy
+    - name: Start postgres
       ansible.builtin.command:
-        argv: [docker, compose, up, --detach, --wait, postgres, caddy]
-      register: infra_up
-      changed_when: infra_up.stderr is search('Created|Recreated|Started')
+        argv: [docker, compose, up, --detach, --wait, --remove-orphans, postgres]
+      register: postgres_up
+      changed_when: postgres_up.stderr is search('Created|Recreated|Started|Removed')
 
     - name: Pull backend {{ app_version }}
       ansible.builtin.command:
@@ -146,9 +121,3 @@
         argv: [docker, image, prune, --force]
       register: prune
       changed_when: "'Total reclaimed space: 0B' not in prune.stdout"
-
-  handlers:
-    - name: Restart caddy
-      ansible.builtin.command:
-        argv: [docker, compose, restart, caddy]
-      changed_when: true

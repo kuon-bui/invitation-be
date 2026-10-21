@@ -193,15 +193,18 @@ Workflow `Deploy` ([.github/workflows/deploy.yml](.github/workflows/deploy.yml))
 
 Trên VPS, Ansible quản lý thư mục `/opt/invitation-backend`. **Đừng sửa tay các file trong đó**, vì lần deploy sau sẽ ghi đè. Compose project `invitation` gồm:
 
-| Service | Vai trò | Cổng mở ra ngoài |
+| Service | Vai trò | Cổng trên host |
 |---|---|---|
 | `postgres` | Postgres 16, dữ liệu nằm trong volume `invitation_postgres_data` | không |
-| `backend` | image `cuongbui1203/invitation-backend:X.Y.Z` | không |
-| `caddy` | HTTPS bằng Cloudflare Origin Certificate, chuyển tiếp tới `backend:3001` | 80, 443 |
+| `backend` | image `cuongbui1203/invitation-backend:X.Y.Z` | `0.0.0.0:3001` |
+
+Truy cập công khai đi qua **Cloudflare Tunnel** do service riêng quản lý, không nằm trong repo này. Public hostname của tunnel trỏ tới `http://<VPS>:3001`. Đổi địa chỉ hoặc cổng bằng biến `backend_bind_address` và `backend_port` trong [group_vars/all/main.yml](deploy/ansible/group_vars/all/main.yml).
+
+> ⚠️ Bind `0.0.0.0` nghĩa là cổng 3001 cũng mở trên IP công khai của VPS. Docker đi vòng qua `ufw`, nên phải chặn cổng này ở firewall của nhà cung cấp, nếu không người ngoài có thể gọi thẳng mà không qua Cloudflare.
 
 Mỗi lần deploy, playbook làm lần lượt:
 1. Ghi lại các file cấu hình.
-2. Bật `postgres` và `caddy`.
+2. Bật `postgres`.
 3. Kéo image mới.
 4. Chạy `prisma migrate deploy`.
 5. Seed mẫu thiệp **chỉ khi bảng `templates` còn trống**.
@@ -216,21 +219,18 @@ Mỗi lần deploy, playbook làm lần lượt:
      "grants": [{ "src": ["tag:ci"], "dst": ["<IP Tailscale của VPS>"], "ip": ["tcp:22"] }]
      ```
    - Vào Settings → OAuth clients, tạo client với scope **Auth Keys (write)** và tag `tag:ci`.
-2. **Cloudflare**:
-   - Vào SSL/TLS → Origin Server → **Create Certificate** cho tên miền backend, định dạng PEM.
-   - SSL/TLS mode đặt **Full (strict)**.
-3. **VPS** (cần có Docker, Compose v2, Tailscale và `python3`):
+2. **VPS** (cần có Docker, Compose v2, Tailscale và `python3`):
    ```bash
    sudo useradd -m -s /bin/bash -G docker deploy        # nếu chưa có user deploy
    sudo install -d -o deploy -g deploy -m 0750 /opt/invitation-backend
    ```
    - Trên máy cá nhân, tạo key: `ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f deploy_key`.
    - Thêm `deploy_key.pub` vào `/home/deploy/.ssh/authorized_keys`.
-   - Mở cổng 80/443 ở firewall của nhà cung cấp VPS.
-4. **Repo**:
+   - Trỏ public hostname của Cloudflare Tunnel tới `http://<VPS>:3001`.
+3. **Repo**:
    - [deploy/ansible/inventory.yml](deploy/ansible/inventory.yml): `ansible_host` là tên MagicDNS đầy đủ của VPS (`<tên-máy>.<tailnet>.ts.net`).
-   - [deploy/ansible/group_vars/all/main.yml](deploy/ansible/group_vars/all/main.yml): `app_domain`, `s3_endpoint`, `s3_public_domain`.
-5. **Vault** (giá trị bí mật):
+   - [deploy/ansible/group_vars/all/main.yml](deploy/ansible/group_vars/all/main.yml): `s3_endpoint`, `s3_public_domain`.
+4. **Vault** (giá trị bí mật):
    - Sinh mật khẩu vault bằng `openssl rand -base64 48`, rồi lưu vào trình quản lý mật khẩu.
    - Tạo file mã hoá bằng lệnh dưới. Trên Windows không chạy Ansible trực tiếp được, nên dùng Docker. Editor trong container là `vi`.
      ```powershell
@@ -240,7 +240,7 @@ Mỗi lần deploy, playbook làm lần lượt:
    - Sau này muốn sửa thì chạy lệnh tương tự, thay `create` bằng `edit`.
 
    > ⚠️ Repo này **public**. `vault.yml` luôn phải bắt đầu bằng `$ANSIBLE_VAULT;1.1;AES256`. Không bao giờ commit bản chưa mã hoá.
-6. **GitHub secrets** (Settings → Secrets and variables → Actions):
+5. **GitHub secrets** (Settings → Secrets and variables → Actions):
 
    | Secret | Giá trị |
    |---|---|
