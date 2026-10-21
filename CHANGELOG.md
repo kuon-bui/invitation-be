@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.1.0...invitation-backend-v0.1.1) (2026-10-21)
+
+
+### Miscellaneous Chores
+
+* release 0.1.1 ([5194aad](https://github.com/kuon-bui/invitation-be/commit/5194aadc95a056eabdaf886c89ad31602fe48e8a))
+
 ## [0.1.0](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.0.1...invitation-backend-v0.1.0) (2026-10-21)
 
 
