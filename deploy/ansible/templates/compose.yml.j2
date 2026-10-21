@@ -1,0 +1,35 @@
+# {{ ansible_managed }}
+name: invitation
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: postgres.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ postgres_user }} -d {{ postgres_db }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: {{ app_image }}:{{ app_version }}
+    restart: unless-stopped
+    env_file: backend.env
+    # Public traffic comes through the user's own Cloudflare Tunnel service
+    ports:
+      - "{{ backend_bind_address }}:{{ backend_port }}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3001/api/v1/templates || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:

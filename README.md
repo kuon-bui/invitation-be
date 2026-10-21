@@ -172,19 +172,89 @@ Phiên bản được quản lý bằng [release-please](https://github.com/goog
 
 1. Mỗi lần push lên `main`, workflow `Release` mở hoặc cập nhật một **Release PR**. PR này tăng `version` trong `package.json` và cập nhật `CHANGELOG.md`.
 2. Merge Release PR, workflow sẽ tạo tag `vX.Y.Z` cùng GitHub Release.
-3. Job `docker` **chỉ push image khi release-please vừa tạo release**. Image có tên `<DOCKERHUB_USERNAME>/invitation-backend`:
+3. Job `docker` **chỉ push image khi release-please vừa tạo release**. Image có tên `<DOCKERHUB_USERNAME>/invitation-backend` và chỉ có bản `linux/arm64` (VPS chạy arm64), được build trên runner `ubuntu-24.04-arm`.
+4. Job `deploy` deploy ngay bản đó lên VPS (xem 5.4).
 
-| Sự kiện | Docker |
-|---|---|
-| Merge Release PR (tạo release `vX.Y.Z`) | push `X.Y.Z`, `X.Y`, `latest` |
-| Push lên `main` thông thường | không build |
-| PR vào `main` | chỉ build để kiểm tra Dockerfile, không push |
+| Sự kiện | Docker | VPS |
+|---|---|---|
+| Merge Release PR (tạo release `vX.Y.Z`) | push `X.Y.Z`, `X.Y`, `latest` | deploy `X.Y.Z` |
+| Push lên `main` thông thường | không build | không đổi |
+| PR vào `main` | chỉ build để kiểm tra Dockerfile, không push | không đổi |
 
 Đang ở giai đoạn `0.x`: `feat` tăng minor, `fix` tăng patch, breaking change cũng chỉ tăng minor. Muốn lên `1.0.0` thì thêm footer `Release-As: 1.0.0` vào commit.
 
 Yêu cầu cấu hình repo (Settings):
 - **Actions → General**: bật *Allow GitHub Actions to create and approve pull requests*.
 - **Secrets and variables → Actions**: secret `DOCKERHUB_USERNAME` và secret `DOCKERHUB_TOKEN` (Docker Hub access token, quyền Read & Write).
+
+### 5.4 Triển khai lên VPS (Ansible + Tailscale)
+
+Workflow `Deploy` ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) cho runner của GitHub vào mạng Tailscale, rồi SSH tới VPS và chạy playbook [deploy/ansible/deploy.yml](deploy/ansible/deploy.yml). Workflow này chạy tự động sau mỗi release, hoặc chạy tay khi cần deploy lại hay rollback.
+
+Trên VPS, Ansible quản lý thư mục `/opt/invitation-backend`. **Đừng sửa tay các file trong đó**, vì lần deploy sau sẽ ghi đè. Compose project `invitation` gồm:
+
+| Service | Vai trò | Cổng trên host |
+|---|---|---|
+| `postgres` | Postgres 16, dữ liệu nằm trong volume `invitation_postgres_data` | không |
+| `backend` | image `cuongbui1203/invitation-backend:X.Y.Z` | `0.0.0.0:3001` |
+
+Truy cập công khai đi qua **Cloudflare Tunnel** do service riêng quản lý, không nằm trong repo này. Public hostname của tunnel trỏ tới `http://<VPS>:3001`. Đổi địa chỉ hoặc cổng bằng biến `backend_bind_address` và `backend_port` trong [group_vars/all/main.yml](deploy/ansible/group_vars/all/main.yml).
+
+> ⚠️ Bind `0.0.0.0` nghĩa là cổng 3001 cũng mở trên IP công khai của VPS. Docker đi vòng qua `ufw`, nên phải chặn cổng này ở firewall của nhà cung cấp, nếu không người ngoài có thể gọi thẳng mà không qua Cloudflare.
+
+Mỗi lần deploy, playbook làm lần lượt:
+1. Ghi lại các file cấu hình.
+2. Bật `postgres`.
+3. Kéo image mới.
+4. Chạy `prisma migrate deploy`.
+5. Seed mẫu thiệp **chỉ khi bảng `templates` còn trống**.
+6. Tạo lại container `backend` và đợi healthcheck xanh. Nếu không xanh, job fail và in 100 dòng log cuối của backend.
+
+#### Chuẩn bị một lần
+
+1. **Tailscale** (Admin console):
+   - Thêm tag `tag:ci` và quyền SSH vào VPS trong policy file, ví dụ:
+     ```json
+     "tagOwners": { "tag:ci": ["autogroup:admin"] },
+     "grants": [{ "src": ["tag:ci"], "dst": ["<IP Tailscale của VPS>"], "ip": ["tcp:22"] }]
+     ```
+   - Vào Settings → OAuth clients, tạo client với scope **Auth Keys (write)** và tag `tag:ci`.
+2. **VPS** (cần có Docker, Compose v2, Tailscale và `python3`):
+   ```bash
+   sudo useradd -m -s /bin/bash -G docker deploy        # nếu chưa có user deploy
+   sudo install -d -o deploy -g deploy -m 0750 /opt/invitation-backend
+   ```
+   - Trên máy cá nhân, tạo key: `ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f deploy_key`.
+   - Thêm `deploy_key.pub` vào `/home/deploy/.ssh/authorized_keys`.
+   - Trỏ public hostname của Cloudflare Tunnel tới `http://<VPS>:3001`.
+3. **Repo**:
+   - [deploy/ansible/inventory.yml](deploy/ansible/inventory.yml): `ansible_host` là tên MagicDNS đầy đủ của VPS (`<tên-máy>.<tailnet>.ts.net`).
+   - [deploy/ansible/group_vars/all/main.yml](deploy/ansible/group_vars/all/main.yml): `s3_endpoint`, `s3_public_domain`.
+4. **Vault** (giá trị bí mật):
+   - Sinh mật khẩu vault bằng `openssl rand -base64 48`, rồi lưu vào trình quản lý mật khẩu.
+   - Tạo file mã hoá bằng lệnh dưới. Trên Windows không chạy Ansible trực tiếp được, nên dùng Docker. Editor trong container là `vi`.
+     ```powershell
+     docker run --rm -it -v "${PWD}/deploy/ansible:/work" -w /work python:3.13-alpine sh -c "pip install -q --root-user-action=ignore ansible-core==2.21.5 && ansible-vault create group_vars/all/vault.yml"
+     ```
+   - Dán các key trong [deploy/ansible/vault.example.yml](deploy/ansible/vault.example.yml) vào rồi điền giá trị thật. Mật khẩu Postgres nên dùng `openssl rand -hex 32`.
+   - Sau này muốn sửa thì chạy lệnh tương tự, thay `create` bằng `edit`.
+
+   > ⚠️ Repo này **public**. `vault.yml` luôn phải bắt đầu bằng `$ANSIBLE_VAULT;1.1;AES256`. Không bao giờ commit bản chưa mã hoá.
+5. **GitHub secrets** (Settings → Secrets and variables → Actions):
+
+   | Secret | Giá trị |
+   |---|---|
+   | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | OAuth client của Tailscale ở bước 1 |
+   | `VPS_SSH_PRIVATE_KEY` | nội dung file `deploy_key` |
+   | `VPS_SSH_KNOWN_HOSTS` | kết quả của `ssh-keyscan <tên MagicDNS>`, chạy từ một máy trong tailnet. Tên máy phải trùng với `ansible_host` |
+   | `ANSIBLE_VAULT_PASSWORD` | mật khẩu vault |
+   | `DOCKERHUB_USERNAME` | secret job `docker` đang dùng (mục 5.3). Workflow Deploy đưa nó vào Ansible qua biến môi trường cùng tên để ghép tên image |
+
+#### Vận hành
+
+- **Deploy lại hoặc rollback**: vào Actions → **Deploy** → Run workflow, rồi nhập version (ví dụ `0.1.0`). Version đó phải đã có trên Docker Hub.
+- **Xem log**: `ssh deploy@<tên MagicDNS>`, rồi chạy `cd /opt/invitation-backend && docker compose logs -f backend`.
+- **Seed lại mẫu thiệp** (⚠️ ghi đè 6 mẫu gốc nếu admin đã sửa): chạy trên VPS `docker compose run --rm backend node dist/prisma/seeds/templates.seed.js`. Nếu chạy Ansible từ máy trong tailnet thì thêm `-e seed_templates=true`. Chạy Ansible ngoài GitHub Actions thì phải `export DOCKERHUB_USERNAME=<user Docker Hub>` trước.
 
 ---
 
