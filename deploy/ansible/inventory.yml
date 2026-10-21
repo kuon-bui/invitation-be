@@ -2,5 +2,5 @@ all:
   hosts:
     production:
       # Tailscale MagicDNS name (or 100.x IP) of the VPS; must match the entry in the VPS_SSH_KNOWN_HOSTS secret
-      ansible_host: griffin-pantone.ts.net
+      ansible_host: pi.griffin-pantone.ts.net
       ansible_user: deploy
