@@ -1,20 +1,40 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InvitationStatus, PaymentStatus } from '@prisma/client';
+import { InvitationStatus, Payment, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { CreatePublicInvoiceDto } from './dto/create-public-invoice.dto';
 import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 
+const DEFAULT_LIFETIME_PRICE = 199000;
+
+export function toPaymentStatus(payment: Payment) {
+  return {
+    invoiceId: payment.id,
+    transactionCode: payment.transactionCode,
+    amount: payment.amount,
+    status: payment.status,
+    isPaid: payment.status === PaymentStatus.SUCCESS,
+    paidAt: payment.paidAt,
+    invitationId: payment.invitationId,
+  };
+}
+
+export type PaymentStatusResponse = ReturnType<typeof toPaymentStatus>;
+
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -36,78 +56,23 @@ export class PaymentsService {
       throw new NotFoundException('Invitation not found');
     }
 
-    const transactionCode = this.generateTransactionCode();
-    const payment = await this.prisma.payment.create({
-      data: {
-        userId,
-        invitationId: dto.invitationId,
-        amount: dto.amount,
-        transactionCode,
-        status: PaymentStatus.PENDING,
-      },
-    });
-
-    const acc = process.env.SEPAY_ACC || '';
-    const bank = process.env.SEPAY_BANK || '';
-    const name = process.env.SEPAY_NAME || '';
-    const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${payment.amount}&des=${transactionCode}`;
-
-    return {
-      invoiceId: payment.id,
-      transactionCode: payment.transactionCode,
-      amount: payment.amount,
-      status: payment.status,
-      qrUrl,
-      accountNumber: acc,
-      bankName: bank,
-      accountName: name,
-    };
+    return this.issueInvoice(userId, invitation.id);
   }
 
   async createPublicInvoice(dto: CreatePublicInvoiceDto) {
-    let invitation: any = null;
-    if (dto.invitationId) {
-      invitation = await this.prisma.invitation.findUnique({
-        where: { id: dto.invitationId },
-      });
-    } else if (dto.slug) {
-      invitation = await this.prisma.invitation.findUnique({
-        where: { slug: dto.slug },
-      });
+    if (!dto.invitationId && !dto.slug) {
+      throw new BadRequestException('invitationId or slug is required');
     }
 
-    const transactionCode = this.generateTransactionCode();
-    const amount = dto.amount || 199000;
+    const invitation = dto.invitationId
+      ? await this.prisma.invitation.findUnique({ where: { id: dto.invitationId } })
+      : await this.prisma.invitation.findUnique({ where: { slug: dto.slug } });
 
-    let invoiceId = '';
-    if (invitation) {
-      const payment = await this.prisma.payment.create({
-        data: {
-          userId: invitation.userId,
-          invitationId: invitation.id,
-          amount,
-          transactionCode,
-          status: PaymentStatus.PENDING,
-        },
-      });
-      invoiceId = payment.id;
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
     }
 
-    const acc = process.env.SEPAY_ACC || '';
-    const bank = process.env.SEPAY_BANK || '';
-    const name = process.env.SEPAY_NAME || '';
-    const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${amount}&des=${transactionCode}`;
-
-    return {
-      invoiceId,
-      transactionCode,
-      amount,
-      status: PaymentStatus.PENDING,
-      qrUrl,
-      accountNumber: acc,
-      bankName: bank,
-      accountName: name,
-    };
+    return this.issueInvoice(invitation.userId, invitation.id);
   }
 
   async handleSepayWebhook(dto: SepayWebhookDto, authHeader?: string) {
@@ -129,6 +94,11 @@ export class PaymentsService {
 
     if (token !== expectedKey) {
       throw new UnauthorizedException('Invalid API key');
+    }
+
+    // Outgoing transfers never pay an invoice; acknowledge so SePay does not retry.
+    if (dto.transferType && dto.transferType !== 'in') {
+      return { success: true, message: 'Ignored: not an incoming transfer' };
     }
 
     let transactionCode: string | null = null;
@@ -164,24 +134,47 @@ export class PaymentsService {
       return { success: true, message: 'Already processed' };
     }
 
-    const updatedPayment = await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: PaymentStatus.SUCCESS,
-        paidAt: new Date(),
-        rawWebhook: dto as any,
-      },
+    const transferAmount = dto.transferAmount ?? 0;
+    if (transferAmount < payment.amount) {
+      this.logger.warn(
+        `Insufficient transfer for ${transactionCode}: received ${transferAmount}, expected ${payment.amount}`,
+      );
+      return { success: true, message: 'Ignored: insufficient amount' };
+    }
+
+    // The conditional update claims the payment, so concurrent duplicate webhooks activate it only once.
+    const activated = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.payment.updateMany({
+        where: { id: payment.id, status: PaymentStatus.PENDING },
+        data: {
+          status: PaymentStatus.SUCCESS,
+          paidAt: new Date(),
+          rawWebhook: dto as any,
+        },
+      });
+      if (count === 0) {
+        return null;
+      }
+
+      const updatedPayment = await tx.payment.findUniqueOrThrow({
+        where: { id: payment.id },
+      });
+      const updatedInvitation = await tx.invitation.update({
+        where: { id: payment.invitationId },
+        data: {
+          status: InvitationStatus.ACTIVE,
+          activatedAt: new Date(),
+          trialEndsAt: null,
+        },
+      });
+      return { updatedPayment, updatedInvitation };
     });
 
-    const updatedInvitation = await this.prisma.invitation.update({
-      where: { id: payment.invitationId },
-      data: {
-        status: InvitationStatus.ACTIVE,
-        activatedAt: new Date(),
-        trialEndsAt: null,
-      },
-    });
+    if (!activated) {
+      return { success: true, message: 'Already processed' };
+    }
 
+    const { updatedPayment, updatedInvitation } = activated;
     const slug = payment.invitation?.slug || updatedInvitation.slug;
     if (slug) {
       await this.cacheManager.del(`invitation:slug:${slug}`);
@@ -198,7 +191,7 @@ export class PaymentsService {
     };
   }
 
-  async checkStatus(transactionCode: string) {
+  async checkStatus(transactionCode: string): Promise<PaymentStatusResponse> {
     const payment = await this.prisma.payment.findFirst({
       where: { transactionCode },
     });
@@ -209,14 +202,40 @@ export class PaymentsService {
       );
     }
 
+    return toPaymentStatus(payment);
+  }
+
+  private lifetimePrice(): number {
+    const price = Number(process.env.PAYMENT_LIFETIME_PRICE);
+    return Number.isInteger(price) && price > 0 ? price : DEFAULT_LIFETIME_PRICE;
+  }
+
+  private async issueInvoice(userId: string, invitationId: string) {
+    const transactionCode = this.generateTransactionCode();
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        invitationId,
+        amount: this.lifetimePrice(),
+        transactionCode,
+        status: PaymentStatus.PENDING,
+      },
+    });
+
+    const acc = process.env.SEPAY_ACC || '';
+    const bank = process.env.SEPAY_BANK || '';
+    const name = process.env.SEPAY_NAME || '';
+    const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${payment.amount}&des=${transactionCode}`;
+
     return {
       invoiceId: payment.id,
       transactionCode: payment.transactionCode,
       amount: payment.amount,
       status: payment.status,
-      isPaid: payment.status === PaymentStatus.SUCCESS,
-      paidAt: payment.paidAt,
-      invitationId: payment.invitationId,
+      qrUrl,
+      accountNumber: acc,
+      bankName: bank,
+      accountName: name,
     };
   }
 }
