@@ -133,14 +133,16 @@ describe('PaymentStatusStreamService', () => {
     ]);
   });
 
-  it('sends a heartbeat comment every 25 seconds while pending', async () => {
+  it('sends a client-visible ping event every 25 seconds while pending', async () => {
     jest.useFakeTimers();
     paymentsService.checkStatus.mockResolvedValue(statusResponse('PENDING'));
 
     const { messages, subscription } = collect(await service.open('MDABC123'));
     await jest.advanceTimersByTimeAsync(25_000);
 
-    expect(messages).toContainEqual({ comment: 'ping' });
+    // A named event with non-empty data is dispatched to EventSource listeners (comments are not),
+    // which lets the client detect a silently stalled stream.
+    expect(messages).toContainEqual({ type: 'ping', data: expect.stringMatching(/.+/) });
     subscription.unsubscribe();
   });
 

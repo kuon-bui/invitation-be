@@ -15,8 +15,10 @@ import {
 } from 'rxjs';
 import { PaymentStatusResponse, PaymentsService, toPaymentStatus } from './payments.service';
 
-// Cloudflare drops proxied connections that stay silent for ~100s.
+// Cloudflare drops proxied connections that stay silent for ~100s. The ping is a named event
+// (not a comment) so the client can see it and reconnect when a stream stalls silently.
 const HEARTBEAT_MS = 25_000;
+const PING_EVENT: MessageEvent = { type: 'ping', data: 'keep-alive' };
 // FE countdown is 15 minutes; leave a little slack before closing abandoned streams.
 const MAX_STREAM_MS = 16 * 60_000;
 const RETRY_MS = 3_000;
@@ -53,7 +55,7 @@ export class PaymentStatusStreamService {
         true,
       ),
       map((status): MessageEvent =>
-        status === null ? { comment: 'ping' } : { data: status, retry: RETRY_MS },
+        status === null ? PING_EVENT : { data: status, retry: RETRY_MS },
       ),
       takeUntil(timer(MAX_STREAM_MS)),
     );
