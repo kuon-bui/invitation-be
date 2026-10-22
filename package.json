@@ -1,6 +1,6 @@
 {
   "name": "invitation-backend",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "NestJS Invitation Backend",
   "author": "",
   "private": true,

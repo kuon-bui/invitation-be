@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.1.2...invitation-backend-v0.2.0) (2026-10-22)
+
+
+### Features
+
+* **payments:** stream payment status over SSE and harden SePay webhook ([#13](https://github.com/kuon-bui/invitation-be/issues/13)) ([8569810](https://github.com/kuon-bui/invitation-be/commit/8569810fd0c9b966f4b2d0fd2a747df32f453c2d))
+* **vault:** add script for running ansible-vault in a Docker container ([#14](https://github.com/kuon-bui/invitation-be/issues/14)) ([2e2afce](https://github.com/kuon-bui/invitation-be/commit/2e2afceccae5e654c0f14c71f7e0d74094178274))
+
 ## [0.1.2](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.1.1...invitation-backend-v0.1.2) (2026-10-21)
 
 
