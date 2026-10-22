@@ -5,11 +5,15 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   Post,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { PaymentsService } from './payments.service';
+import { PaymentStatusStreamService } from './payment-status-stream.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { CreatePublicInvoiceDto } from './dto/create-public-invoice.dto';
 import { SepayWebhookDto } from './dto/sepay-webhook.dto';
@@ -18,7 +22,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('api/v1/payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly paymentStatusStream: PaymentStatusStreamService,
+  ) {}
 
   @Post('create-invoice')
   @UseGuards(JwtAuthGuard)
@@ -47,5 +54,12 @@ export class PaymentsController {
   @Get('check-status/:transactionCode')
   async checkStatus(@Param('transactionCode') transactionCode: string) {
     return this.paymentsService.checkStatus(transactionCode);
+  }
+
+  @Sse('stream/:transactionCode')
+  streamStatus(
+    @Param('transactionCode') transactionCode: string,
+  ): Promise<Observable<MessageEvent>> {
+    return this.paymentStatusStream.open(transactionCode);
   }
 }

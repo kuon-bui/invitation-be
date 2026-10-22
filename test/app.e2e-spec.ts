@@ -13,7 +13,7 @@ import { GuestsService } from '../src/modules/guests/guests.service';
 import { PaymentsService } from '../src/modules/payments/payments.service';
 import { EventType, GuestSide, InvitationStatus, PaymentStatus, Role } from '@prisma/client';
 
-describe('E2E Integration Suite (9-Step User Journey)', () => {
+describe('E2E Integration Suite (11-Step User Journey)', () => {
   let app: INestApplication;
 
   // In-memory data store
@@ -489,7 +489,17 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
     transactionCode = res.body.transactionCode;
   });
 
-  it('Step 9: POST /api/v1/payments/webhook/sepay -> Webhook confirms payment and activates invitation', async () => {
+  it('Step 9: POST /api/v1/payments/webhook/sepay -> Webhook confirms payment, pushes SUCCESS to the open SSE stream and activates invitation', async () => {
+    const findFirstCalls = mockPrismaService.payment.findFirst.mock.calls.length;
+    // The stream request resolves only once the stream completes, i.e. after the webhook lands.
+    const streamResponse = request(app.getHttpServer())
+      .get(`/api/v1/payments/stream/${transactionCode}`)
+      .buffer(true)
+      .parse(collectText)
+      .then((response) => response);
+    // Pre-check + snapshot query done => the stream is subscribed to payment.success.
+    await waitFor(() => mockPrismaService.payment.findFirst.mock.calls.length >= findFirstCalls + 2);
+
     const res = await request(app.getHttpServer())
       .post('/api/v1/payments/webhook/sepay')
       .set('Authorization', 'Bearer test-sepay-api-key')
@@ -510,6 +520,14 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe('Payment processed and invitation activated');
 
+    const stream = await streamResponse;
+    expect(stream.status).toBe(200);
+    expect(stream.headers['content-type']).toContain('text/event-stream');
+    expect(parseSseData(stream.body).map((event) => event.status)).toEqual([
+      PaymentStatus.PENDING,
+      PaymentStatus.SUCCESS,
+    ]);
+
     // Verify invitation is now ACTIVE
     const checkRes = await request(app.getHttpServer())
       .get(`/api/v1/my-invitations/${invitationId}`)
@@ -518,4 +536,45 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
 
     expect(checkRes.body.status).toBe(InvitationStatus.ACTIVE);
   });
+
+  it('Step 10: GET /api/v1/payments/stream/:transactionCode -> Stream opened after payment sends SUCCESS and closes', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/payments/stream/${transactionCode}`)
+      .buffer(true)
+      .parse(collectText)
+      .expect(200);
+
+    expect(res.headers['content-type']).toContain('text/event-stream');
+    const events = parseSseData(res.body);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ transactionCode, status: PaymentStatus.SUCCESS, isPaid: true });
+  });
+
+  it('Step 11: GET /api/v1/payments/stream/:transactionCode -> Unknown transaction code returns 404', async () => {
+    await request(app.getHttpServer()).get('/api/v1/payments/stream/MDUNKNOWN').expect(404);
+  });
 });
+
+function collectText(res: any, callback: (err: Error | null, body: string) => void) {
+  let body = '';
+  res.setEncoding('utf8');
+  res.on('data', (chunk: string) => (body += chunk));
+  res.on('end', () => callback(null, body));
+}
+
+function parseSseData(body: string): any[] {
+  return body
+    .split('\n')
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => JSON.parse(line.slice('data: '.length)));
+}
+
+async function waitFor(condition: () => boolean, timeoutMs = 2000) {
+  const startedAt = Date.now();
+  while (!condition()) {
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error('Timed out waiting for condition');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}

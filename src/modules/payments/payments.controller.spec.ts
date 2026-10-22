@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { of } from 'rxjs';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
+import { PaymentStatusStreamService } from './payment-status-stream.service';
 
 describe('PaymentsController', () => {
   let controller: PaymentsController;
   let service: Partial<PaymentsService>;
+  let statusStream: { open: jest.Mock };
 
   beforeEach(async () => {
     service = {
@@ -12,10 +15,14 @@ describe('PaymentsController', () => {
       handleSepayWebhook: jest.fn(),
       checkStatus: jest.fn(),
     };
+    statusStream = { open: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PaymentsController],
-      providers: [{ provide: PaymentsService, useValue: service }],
+      providers: [
+        { provide: PaymentsService, useValue: service },
+        { provide: PaymentStatusStreamService, useValue: statusStream },
+      ],
     }).compile();
 
     controller = module.get<PaymentsController>(PaymentsController);
@@ -83,5 +90,14 @@ describe('PaymentsController', () => {
     const result = await controller.checkStatus('MD123');
     expect(service.checkStatus).toHaveBeenCalledWith('MD123');
     expect(result.status).toBe('PENDING');
+  });
+
+  it('should open the payment status stream for the transaction code', async () => {
+    const stream$ = of({ data: { status: 'PENDING' } });
+    statusStream.open.mockResolvedValue(stream$);
+
+    const result = await controller.streamStatus('MD123');
+    expect(statusStream.open).toHaveBeenCalledWith('MD123');
+    expect(result).toBe(stream$);
   });
 });
