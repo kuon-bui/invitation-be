@@ -9,6 +9,7 @@ export class CreatePublicInvoiceDto {
   @IsOptional()
   slug?: string;
 
+  // Ignored: the price is decided by the server (PAYMENT_LIFETIME_PRICE).
   @IsInt()
   @IsPositive()
   @IsOptional()

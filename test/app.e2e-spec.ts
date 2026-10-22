@@ -277,6 +277,18 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
         Object.assign(payment, data, { updatedAt: new Date() });
         return { ...payment };
       }),
+      updateMany: jest.fn().mockImplementation(async ({ where, data }) => {
+        const matched = payments.filter((p) =>
+          Object.entries(where).every(([key, value]) => p[key] === value),
+        );
+        matched.forEach((p) => Object.assign(p, data, { updatedAt: new Date() }));
+        return { count: matched.length };
+      }),
+      findUniqueOrThrow: jest.fn().mockImplementation(async ({ where }) => {
+        const payment = payments.find((p) => p.id === where.id);
+        if (!payment) throw new Error('Payment not found');
+        return { ...payment };
+      }),
     },
 
     notificationConfig: {
@@ -295,6 +307,10 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
       }),
     },
   };
+
+  (mockPrismaService as any).$transaction = jest
+    .fn()
+    .mockImplementation(async (callback: (tx: any) => Promise<any>) => callback(mockPrismaService));
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-jwt-secret-key-12345';
@@ -459,13 +475,14 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         invitationId,
-        amount: 299000,
+        amount: 1000,
       })
       .expect(201);
 
     expect(res.body).toHaveProperty('invoiceId');
     expect(res.body.transactionCode).toBe('MDXYZ');
-    expect(res.body.amount).toBe(299000);
+    // The server sets the price; the client amount is ignored.
+    expect(res.body.amount).toBe(199000);
     expect(res.body.status).toBe(PaymentStatus.PENDING);
     expect(res.body.qrUrl).toContain('MDXYZ');
 
@@ -485,7 +502,7 @@ describe('E2E Integration Suite (9-Step User Journey)', () => {
         content: `CK ${transactionCode}`,
         transferType: 'in',
         description: `Thanh toan kich hoat thiep ${transactionCode}`,
-        transferAmount: 299000,
+        transferAmount: 199000,
         referenceCode: 'FT12345678',
       })
       .expect(200);
