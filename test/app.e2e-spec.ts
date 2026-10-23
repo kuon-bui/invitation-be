@@ -13,27 +13,11 @@ import { GuestsService } from '../src/modules/guests/guests.service';
 import { PaymentsService } from '../src/modules/payments/payments.service';
 import { EventType, GuestSide, InvitationStatus, PaymentStatus, Role } from '@prisma/client';
 
-describe('E2E Integration Suite (11-Step User Journey)', () => {
+describe('E2E Integration Suite (10-Step User Journey)', () => {
   let app: INestApplication;
 
   // In-memory data store
   let users: any[] = [];
-  let templates: any[] = [
-    {
-      id: 'duyen-dang-01',
-      name: 'Duyên Dáng 01',
-      eventType: EventType.WEDDING,
-      category: 'truyen-thong',
-      badge: 'Phổ biến',
-      styleDesc: 'Phong cách truyền thống sang trọng',
-      thumbnailUrl: 'https://example.com/duyen-dang-01.jpg',
-      isActive: true,
-      order: 1,
-      config: { primaryColor: '#d32f2f' },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ];
   let invitations: any[] = [];
   let guests: any[] = [];
   let rsvps: any[] = [];
@@ -73,21 +57,8 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
       }),
     },
 
-    template: {
-      findMany: jest.fn().mockImplementation(async ({ where }) => {
-        return templates.filter((t) => {
-          if (where?.isActive !== undefined && t.isActive !== where.isActive) return false;
-          if (where?.eventType && t.eventType !== where.eventType) return false;
-          return true;
-        });
-      }),
-      findUnique: jest.fn().mockImplementation(async ({ where }) => {
-        return templates.find((t) => t.id === where.id) || null;
-      }),
-    },
-
     invitation: {
-      findUnique: jest.fn().mockImplementation(async ({ where, include }) => {
+      findUnique: jest.fn().mockImplementation(async ({ where }) => {
         const inv = invitations.find((i) => {
           if (where.slug && i.slug === where.slug) return true;
           if (where.id && i.id === where.id) return true;
@@ -95,23 +66,17 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
         });
         if (!inv) return null;
         const result = { ...inv };
-        if (include?.template) {
-          result.template = templates.find((t) => t.id === inv.templateId) || null;
-        }
         return result;
       }),
-      findMany: jest.fn().mockImplementation(async ({ where, include }) => {
+      findMany: jest.fn().mockImplementation(async ({ where }) => {
         return invitations
           .filter((i) => !where?.userId || i.userId === where.userId)
           .map((i) => {
             const item = { ...i };
-            if (include?.template) {
-              item.template = templates.find((t) => t.id === i.templateId) || null;
-            }
             return item;
           });
       }),
-      create: jest.fn().mockImplementation(async ({ data, include }) => {
+      create: jest.fn().mockImplementation(async ({ data }) => {
         const newInv = {
           id: randomUUID(),
           ...data,
@@ -120,9 +85,6 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
         };
         invitations.push(newInv);
         const result = { ...newInv };
-        if (include?.template) {
-          result.template = templates.find((t) => t.id === newInv.templateId) || null;
-        }
         return result;
       }),
       update: jest.fn().mockImplementation(async ({ where, data }) => {
@@ -365,18 +327,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     accessToken = res.body.accessToken;
   });
 
-  it('Step 2: GET /api/v1/templates -> Browse templates and select duyen-dang-01', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/templates')
-      .expect(200);
-
-    expect(Array.isArray(res.body)).toBe(true);
-    const selectedTemplate = res.body.find((t: any) => t.id === 'duyen-dang-01');
-    expect(selectedTemplate).toBeDefined();
-    expect(selectedTemplate.name).toBe('Duyên Dáng 01');
-  });
-
-  it('Step 3: POST /api/v1/my-invitations -> Create invitation with slug "quan-dung" and TRIAL status', async () => {
+  it('Step 2: POST /api/v1/my-invitations -> Create invitation with slug "quan-dung" and TRIAL status', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/my-invitations')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -399,7 +350,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     invitationId = res.body.id;
   });
 
-  it('Step 4: POST /api/v1/my-invitations/:id/guests -> Add guest "Anh Tuấn" with code "TUAN12"', async () => {
+  it('Step 3: POST /api/v1/my-invitations/:id/guests -> Add guest "Anh Tuấn" with code "TUAN12"', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/v1/my-invitations/${invitationId}/guests`)
       .set('Authorization', `Bearer ${accessToken}`)
@@ -419,7 +370,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     guestCode = res.body.code;
   });
 
-  it('Step 5: GET /api/v1/invitations/slug/:slug/guest/:code -> Guest opens invitation, hasViewed becomes true', async () => {
+  it('Step 4: GET /api/v1/invitations/slug/:slug/guest/:code -> Guest opens invitation, hasViewed becomes true', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/v1/invitations/slug/quan-dung/guest/${guestCode}`)
       .expect(200);
@@ -432,7 +383,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     expect(res.body.guest.hasViewed).toBe(true);
   });
 
-  it('Step 6: POST /api/v1/invitations/:id/rsvp -> Guest submits RSVP response', async () => {
+  it('Step 5: POST /api/v1/invitations/:id/rsvp -> Guest submits RSVP response', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/v1/invitations/${invitationId}/rsvp`)
       .send({
@@ -453,7 +404,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     expect(res.body.diet).toBe('chay');
   });
 
-  it('Step 7: POST /api/v1/invitations/:id/wishes -> Guest posts wedding wish', async () => {
+  it('Step 6: POST /api/v1/invitations/:id/wishes -> Guest posts wedding wish', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/v1/invitations/${invitationId}/wishes`)
       .send({
@@ -469,7 +420,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     expect(res.body.isApproved).toBe(true);
   });
 
-  it('Step 8: POST /api/v1/payments/create-invoice -> Couple creates invoice, generates transactionCode "MDXYZ"', async () => {
+  it('Step 7: POST /api/v1/payments/create-invoice -> Couple creates invoice, generates transactionCode "MDXYZ"', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/payments/create-invoice')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -489,7 +440,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     transactionCode = res.body.transactionCode;
   });
 
-  it('Step 9: POST /api/v1/payments/webhook/sepay -> Webhook confirms payment, pushes SUCCESS to the open SSE stream and activates invitation', async () => {
+  it('Step 8: POST /api/v1/payments/webhook/sepay -> Webhook confirms payment, pushes SUCCESS to the open SSE stream and activates invitation', async () => {
     const findFirstCalls = mockPrismaService.payment.findFirst.mock.calls.length;
     // The stream request resolves only once the stream completes, i.e. after the webhook lands.
     const streamResponse = request(app.getHttpServer())
@@ -537,7 +488,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     expect(checkRes.body.status).toBe(InvitationStatus.ACTIVE);
   });
 
-  it('Step 10: GET /api/v1/payments/stream/:transactionCode -> Stream opened after payment sends SUCCESS and closes', async () => {
+  it('Step 9: GET /api/v1/payments/stream/:transactionCode -> Stream opened after payment sends SUCCESS and closes', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/v1/payments/stream/${transactionCode}`)
       .buffer(true)
@@ -550,7 +501,7 @@ describe('E2E Integration Suite (11-Step User Journey)', () => {
     expect(events[0]).toMatchObject({ transactionCode, status: PaymentStatus.SUCCESS, isPaid: true });
   });
 
-  it('Step 11: GET /api/v1/payments/stream/:transactionCode -> Unknown transaction code returns 404', async () => {
+  it('Step 10: GET /api/v1/payments/stream/:transactionCode -> Unknown transaction code returns 404', async () => {
     await request(app.getHttpServer()).get('/api/v1/payments/stream/MDUNKNOWN').expect(404);
   });
 });

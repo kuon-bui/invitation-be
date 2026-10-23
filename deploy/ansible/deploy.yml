@@ -5,7 +5,6 @@
     ansible.builtin.command:
       chdir: "{{ app_dir }}"
   vars:
-    seed_templates: false
     required_settings:
       - ansible_host
       - dockerhub_username
@@ -86,19 +85,6 @@
         argv: [docker, compose, run, --rm, backend, ./node_modules/.bin/prisma, migrate, deploy]
       register: migrate
       changed_when: "'No pending migrations' not in migrate.stdout"
-
-    - name: Count templates
-      ansible.builtin.command:
-        argv: [docker, compose, exec, -T, postgres, psql, -U, "{{ postgres_user }}", -d, "{{ postgres_db }}", -tAc, SELECT COUNT(*) FROM templates]
-      register: template_count
-      changed_when: false
-
-    # Seed upserts by id, so a forced re-seed overwrites admin edits to the seeded templates
-    - name: Seed templates
-      ansible.builtin.command:
-        argv: [docker, compose, run, --rm, backend, node, dist/prisma/seeds/templates.seed.js]
-      when: template_count.stdout | trim == '0' or seed_templates | bool
-      changed_when: true
 
     - name: Start backend {{ app_version }}
       block:

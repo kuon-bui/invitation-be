@@ -5,7 +5,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { TemplatesModule } from './modules/templates/templates.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { RsvpModule } from './modules/rsvp/rsvp.module';
@@ -22,7 +21,6 @@ import { PaymentsModule } from './modules/payments/payments.module';
     PrismaModule,
     UsersModule,
     AuthModule,
-    TemplatesModule,
     InvitationsModule,
     GuestsModule,
     RsvpModule,

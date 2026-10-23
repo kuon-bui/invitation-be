@@ -53,7 +53,7 @@ describe('InvitationsService', () => {
 
     it('should fetch from DB and cache if not in cache on findBySlug', async () => {
       cache.get.mockResolvedValue(null);
-      const dbData = { id: 'inv-1', slug: 'quan-dung', template: { name: 'Duyên dáng 01' } };
+      const dbData = { id: 'inv-1', slug: 'quan-dung' };
       (prisma.invitation!.findUnique as jest.Mock).mockResolvedValue(dbData);
 
       const result = await service.findBySlug('quan-dung');
@@ -61,7 +61,6 @@ describe('InvitationsService', () => {
       expect(cache.set).toHaveBeenCalledWith('invitation:slug:quan-dung', dbData, 300000);
       expect(prisma.invitation!.findUnique).toHaveBeenCalledWith({
         where: { slug: 'quan-dung' },
-        include: { template: true },
       });
     });
 
@@ -82,7 +81,6 @@ describe('InvitationsService', () => {
       expect(result).toEqual(invitations);
       expect(prisma.invitation!.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
-        include: { template: true },
         orderBy: { createdAt: 'desc' },
       });
     });
