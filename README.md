@@ -64,7 +64,7 @@ Các biến môi trường chính:
 | `SEPAY_WEBHOOK_API_KEY` | API Key xác thực Webhook SePay | `your-sepay-secure-webhook-api-key` |
 | `TELEGRAM_BOT_TOKEN` | Token Bot Telegram thông báo | `your-telegram-bot-token` |
 
-### 3.3 Database Migration & Seed dữ liệu mẫu
+### 3.3 Database Migration
 
 Sinh Prisma Client:
 ```bash
@@ -74,11 +74,6 @@ pnpm run prisma:generate
 Chạy migration tạo bảng trong database:
 ```bash
 pnpm run prisma:migrate
-```
-
-Seed dữ liệu các mẫu thiệp mặc định:
-```bash
-pnpm run prisma:seed
 ```
 
 ### 3.4 Chạy ứng dụng
@@ -102,7 +97,7 @@ Server sẽ lắng nghe tại: `http://localhost:3001`
 
 ### 4.1 Unit Tests
 
-Chạy toàn bộ 24 test suites của các module (Auth, Users, Templates, Invitations, Guests, RSVP, Wishes, Payments, Media, Notifications):
+Chạy toàn bộ 23 test suites của các module (Auth, Users, Invitations, Guests, RSVP, Wishes, Payments, Media, Notifications):
 
 ```bash
 pnpm test
@@ -113,7 +108,7 @@ Xem báo cáo độ phủ mã (code coverage):
 pnpm run test:cov
 ```
 
-### 4.2 E2E Integration Suite (9-Step User Journey)
+### 4.2 E2E Integration Suite (10-Step User Journey)
 
 Kịch bản E2E kiểm thử toàn vẹn quy trình người dùng từ đăng ký tài khoản đến khi thanh toán kích hoạt thiệp:
 
@@ -121,16 +116,17 @@ Kịch bản E2E kiểm thử toàn vẹn quy trình người dùng từ đăng 
 pnpm run test:e2e
 ```
 
-**9 bước trong kịch bản kiểm thử E2E (`test/app.e2e-spec.ts`):**
+**10 bước trong kịch bản kiểm thử E2E (`test/app.e2e-spec.ts`):**
 1. `POST /api/v1/auth/register`: Đăng ký tài khoản cặp đôi -> Nhận `accessToken` & thông tin người dùng.
-2. `GET /api/v1/templates`: Khám phá kho mẫu thiệp cưới public -> Chọn mẫu `duyen-dang-01`.
-3. `POST /api/v1/my-invitations`: Tạo thiệp cưới -> Nhận thiệp với `slug = "quan-dung"`, trạng thái ban đầu `TRIAL`.
-4. `POST /api/v1/my-invitations/:id/guests`: Thêm khách mời "Anh Tuấn" -> Tự động sinh mã định danh cá nhân `code = "TUAN12"`.
-5. `GET /api/v1/invitations/slug/:slug/guest/:code`: Khách mở thiệp cá nhân hóa qua URL -> Ghi nhận `hasViewed = true`.
-6. `POST /api/v1/invitations/:id/rsvp`: Khách phản hồi xác nhận tham dự (RSVP), chọn khẩu vị ăn chay và số người đi kèm.
-7. `POST /api/v1/invitations/:id/wishes`: Khách gửi lời chúc lên sổ lưu bút thiệp cưới.
-8. `POST /api/v1/payments/create-invoice`: Cặp đôi tạo hóa đơn nâng cấp gói thiệp -> Sinh mã giao dịch `transactionCode = "MDXYZ"` kèm VietQR URL.
-9. `POST /api/v1/payments/webhook/sepay`: Giả lập Webhook SePay ngân hàng chuyển khoản thành công -> Thiệp chuyển trạng thái `ACTIVE`.
+2. `POST /api/v1/my-invitations`: Tạo thiệp cưới -> Nhận thiệp với `slug = "quan-dung"`, trạng thái ban đầu `TRIAL`.
+3. `POST /api/v1/my-invitations/:id/guests`: Thêm khách mời "Anh Tuấn" -> Tự động sinh mã định danh cá nhân `code = "TUAN12"`.
+4. `GET /api/v1/invitations/slug/:slug/guest/:code`: Khách mở thiệp cá nhân hóa qua URL -> Ghi nhận `hasViewed = true`.
+5. `POST /api/v1/invitations/:id/rsvp`: Khách phản hồi xác nhận tham dự (RSVP), chọn khẩu vị ăn chay và số người đi kèm.
+6. `POST /api/v1/invitations/:id/wishes`: Khách gửi lời chúc lên sổ lưu bút thiệp cưới.
+7. `POST /api/v1/payments/create-invoice`: Cặp đôi tạo hóa đơn nâng cấp gói thiệp -> Sinh mã giao dịch `transactionCode = "MDXYZ"` kèm VietQR URL.
+8. `POST /api/v1/payments/webhook/sepay`: Giả lập Webhook SePay ngân hàng chuyển khoản thành công -> Thiệp chuyển trạng thái `ACTIVE`.
+9. `GET /api/v1/payments/stream/:transactionCode`: Mở stream SSE sau khi đã thanh toán -> Nhận ngay `SUCCESS` rồi đóng.
+10. `GET /api/v1/payments/stream/:transactionCode`: Mã giao dịch không tồn tại -> Trả về 404.
 
 ---
 
@@ -207,8 +203,7 @@ Mỗi lần deploy, playbook làm lần lượt:
 2. Bật `postgres`.
 3. Kéo image mới.
 4. Chạy `prisma migrate deploy`.
-5. Seed mẫu thiệp **chỉ khi bảng `templates` còn trống**.
-6. Tạo lại container `backend` và đợi healthcheck xanh. Nếu không xanh, job fail và in 100 dòng log cuối của backend.
+5. Tạo lại container `backend` và đợi healthcheck xanh. Nếu không xanh, job fail và in 100 dòng log cuối của backend.
 
 #### Chuẩn bị một lần
 
@@ -254,7 +249,6 @@ Mỗi lần deploy, playbook làm lần lượt:
 
 - **Deploy lại hoặc rollback**: vào Actions → **Deploy** → Run workflow, rồi nhập version (ví dụ `0.1.0`). Version đó phải đã có trên Docker Hub.
 - **Xem log**: `ssh deploy@<tên MagicDNS>`, rồi chạy `cd /opt/invitation-backend && docker compose logs -f backend`.
-- **Seed lại mẫu thiệp** (⚠️ ghi đè 6 mẫu gốc nếu admin đã sửa): chạy trên VPS `docker compose run --rm backend node dist/prisma/seeds/templates.seed.js`. Nếu chạy Ansible từ máy trong tailnet thì thêm `-e seed_templates=true`. Chạy Ansible ngoài GitHub Actions thì phải `export DOCKERHUB_USERNAME=<user Docker Hub>` trước.
 
 ---
 
@@ -264,11 +258,6 @@ Mỗi lần deploy, playbook làm lần lượt:
 - `POST /api/v1/auth/register`: Đăng ký tài khoản
 - `POST /api/v1/auth/login`: Đăng nhập lấy access token
 - `GET /api/v1/auth/me`: Thông tin người dùng hiện tại (yêu cầu JWT)
-
-### Templates (`/api/v1/templates`)
-- `GET /api/v1/templates`: Danh sách mẫu thiệp công khai (hỗ trợ lọc `eventType`)
-- `GET /api/v1/templates/:id`: Chi tiết mẫu thiệp và cấu hình JSON schema
-- `POST /api/v1/admin/templates`: Quản trị viên thêm mẫu thiệp mới (Role ADMIN)
 
 ### Quản lý thiệp cá nhân (`/api/v1/my-invitations`)
 - `GET /api/v1/my-invitations`: Danh sách thiệp của tôi

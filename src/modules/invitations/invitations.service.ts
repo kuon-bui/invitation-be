@@ -57,7 +57,6 @@ export class InvitationsService {
 
     const invitation = await this.prisma.invitation.findUnique({
       where: { slug },
-      include: { template: true },
     });
 
     if (!invitation) {
@@ -71,7 +70,6 @@ export class InvitationsService {
   async findAllByUser(userId: string) {
     return this.prisma.invitation.findMany({
       where: { userId },
-      include: { template: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -79,7 +77,6 @@ export class InvitationsService {
   async findOne(id: string) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { id },
-      include: { template: true },
     });
 
     if (!invitation) {
@@ -127,7 +124,6 @@ export class InvitationsService {
         details: dto.details ?? {},
         customConfig: dto.customConfig ?? {},
       } as any,
-      include: { template: true },
     });
   }
 
