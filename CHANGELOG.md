@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.2.1...invitation-backend-v0.2.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deploy:** point container healthcheck at a dedicated health endpoint ([#18](https://github.com/kuon-bui/invitation-be/issues/18)) ([82b9a30](https://github.com/kuon-bui/invitation-be/commit/82b9a300cffe1387bfb6dbf43027800a8dd4e9f8))
+
 ## [0.2.1](https://github.com/kuon-bui/invitation-be/compare/invitation-backend-v0.2.0...invitation-backend-v0.2.1) (2026-10-24)
 
 
